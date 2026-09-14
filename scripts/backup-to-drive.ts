@@ -10,21 +10,20 @@
  *      the code back into the terminal. This creates `token.json` so every
  *      run after that is fully automatic (no browser needed again).
  *
- * What it does every run:
- *   - Dumps every MongoDB collection to a JSON file
- *   - Zips them into one timestamped archive
- *   - Uploads the zip to a "Barangay Backups" folder in Google Drive
- *   - Deletes old backups beyond the retention count, both locally and on Drive
+ * This does the same backup as the weekly Vercel Cron job in production
+ * (src/pages/api/cron/backup.ts) -- both call the shared logic in
+ * src/backend/services/backup/core.ts. Use this script to run a backup
+ * on demand from your Mac, or to complete the one-time Google OAuth flow
+ * that scripts/print-vercel-backup-env.ts then reads from.
  */
 
-import mongoose from "mongoose";
 import * as dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
-import os from "os";
 import readline from "readline";
-import archiver from "archiver";
 import { google } from "googleapis";
+import type { OAuth2Client } from "google-auth-library";
+import { runBackup } from "../src/backend/services/backup/core";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 
@@ -37,23 +36,13 @@ if (!MONGODB_URI) {
 const CREDENTIALS_PATH =
   process.env.GOOGLE_CREDENTIALS_PATH || path.resolve(__dirname, "../credentials.json");
 const TOKEN_PATH = process.env.GOOGLE_TOKEN_PATH || path.resolve(__dirname, "../token.json");
-const DRIVE_FOLDER_NAME = process.env.GOOGLE_DRIVE_FOLDER_NAME || "Barangay Backups";
-const RETENTION_COUNT = Number(process.env.BACKUP_RETENTION_COUNT || 8);
 const LOCAL_BACKUP_DIR = path.resolve(__dirname, "../backups");
 
 // drive.file = the app can only see/manage files IT created. It cannot browse
 // the rest of your Drive. Safest scope for an unattended backup script.
 const SCOPES = ["https://www.googleapis.com/auth/drive.file"];
 
-function timestamp() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
-}
-
-// ---------- Google auth ----------
-
-async function getAuthorizedClient() {
+async function getAuthorizedClient(): Promise<OAuth2Client> {
   if (!fs.existsSync(CREDENTIALS_PATH)) {
     console.error(`❌ Missing ${CREDENTIALS_PATH}`);
     console.error(
@@ -73,10 +62,7 @@ async function getAuthorizedClient() {
     return oAuth2Client;
   }
 
-  const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: SCOPES,
-  });
+  const authUrl = oAuth2Client.generateAuthUrl({ access_type: "offline", scope: SCOPES });
 
   console.log("\n🔑 First-time setup: open this URL, sign in, and approve access:\n");
   console.log(authUrl);
@@ -94,132 +80,27 @@ async function getAuthorizedClient() {
   oAuth2Client.setCredentials(tokens);
   fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens, null, 2));
   console.log(`✅ Saved token to ${TOKEN_PATH} — future runs will be fully automatic.\n`);
+  if (!tokens.refresh_token) {
+    console.log(
+      "⚠️  No refresh_token in the response (Google only sends one the first time you " +
+        "authorize this app). If you ever need a fresh one, revoke access at " +
+        "https://myaccount.google.com/permissions and run this script again.",
+    );
+  }
 
   return oAuth2Client;
 }
 
-async function getOrCreateBackupFolder(drive: any): Promise<string> {
-  const res = await drive.files.list({
-    q: `name='${DRIVE_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-    fields: "files(id, name)",
-    spaces: "drive",
-  });
-
-  if (res.data.files && res.data.files.length > 0) {
-    return res.data.files[0].id as string;
-  }
-
-  const folder = await drive.files.create({
-    requestBody: {
-      name: DRIVE_FOLDER_NAME,
-      mimeType: "application/vnd.google-apps.folder",
-    },
-    fields: "id",
-  });
-
-  console.log(`📁 Created "${DRIVE_FOLDER_NAME}" folder in Google Drive`);
-  return folder.data.id as string;
-}
-
-async function uploadToDrive(filePath: string, fileName: string) {
-  const auth = await getAuthorizedClient();
-  const drive = google.drive({ version: "v3", auth: auth as any });
-  const folderId = await getOrCreateBackupFolder(drive);
-
-  await drive.files.create({
-    requestBody: {
-      name: fileName,
-      parents: [folderId],
-    },
-    media: {
-      mimeType: "application/zip",
-      body: fs.createReadStream(filePath),
-    },
-  });
-
-  console.log(`☁️  Uploaded ${fileName} to Google Drive`);
-
-  // Retention: keep only the most recent N backups in the Drive folder
-  const res = await drive.files.list({
-    q: `'${folderId}' in parents and trashed=false`,
-    fields: "files(id, name, createdTime)",
-    orderBy: "createdTime desc",
-    spaces: "drive",
-  });
-
-  const files = res.data.files || [];
-  const toDelete = files.slice(RETENTION_COUNT);
-  for (const f of toDelete) {
-    await drive.files.delete({ fileId: f.id as string });
-    console.log(`🗑️  Removed old Drive backup: ${f.name}`);
-  }
-}
-
-// ---------- Mongo dump ----------
-
-async function dumpCollectionsToJson(destDir: string) {
-  await mongoose.connect(MONGODB_URI);
-  console.log("✅ Connected to MongoDB");
-
-  const db = mongoose.connection.db!;
-  const collections = await db.listCollections().toArray();
-
-  fs.mkdirSync(destDir, { recursive: true });
-
-  for (const { name } of collections) {
-    const docs = await db.collection(name).find({}).toArray();
-    fs.writeFileSync(path.join(destDir, `${name}.json`), JSON.stringify(docs, null, 2));
-    console.log(`📄 Dumped ${name} (${docs.length} documents)`);
-  }
-
-  await mongoose.disconnect();
-}
-
-function zipDirectory(sourceDir: string, outPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const output = fs.createWriteStream(outPath);
-    const archive = archiver("zip", { zlib: { level: 9 } });
-
-    output.on("close", () => resolve());
-    archive.on("error", (err) => reject(err));
-
-    archive.pipe(output);
-    archive.directory(sourceDir, false);
-    archive.finalize();
-  });
-}
-
-function cleanupLocalBackups() {
-  if (!fs.existsSync(LOCAL_BACKUP_DIR)) return;
-  const files = fs
-    .readdirSync(LOCAL_BACKUP_DIR)
-    .filter((f) => f.endsWith(".zip"))
-    .map((f) => ({ name: f, time: fs.statSync(path.join(LOCAL_BACKUP_DIR, f)).mtimeMs }))
-    .sort((a, b) => b.time - a.time);
-
-  for (const f of files.slice(RETENTION_COUNT)) {
-    fs.unlinkSync(path.join(LOCAL_BACKUP_DIR, f.name));
-    console.log(`🗑️  Removed old local backup: ${f.name}`);
-  }
-}
-
-// ---------- Main ----------
-
 async function main() {
-  const ts = timestamp();
-  const tmpDir = path.join(os.tmpdir(), `brgy-backup-${ts}`);
-  const zipName = `barangay-backup-${ts}.zip`;
-  const zipPath = path.join(LOCAL_BACKUP_DIR, zipName);
+  const auth = await getAuthorizedClient();
+  console.log("✅ Authorized. Starting backup...\n");
+  const result = await runBackup(MONGODB_URI, auth, LOCAL_BACKUP_DIR);
 
-  fs.mkdirSync(LOCAL_BACKUP_DIR, { recursive: true });
-
-  await dumpCollectionsToJson(tmpDir);
-  await zipDirectory(tmpDir, zipPath);
-  fs.rmSync(tmpDir, { recursive: true, force: true });
-  console.log(`🗜️  Created ${zipPath}`);
-
-  await uploadToDrive(zipPath, zipName);
-  cleanupLocalBackups();
+  for (const line of result.collectionsSummary) console.log(`📄 Dumped ${line}`);
+  console.log(`🗜️  Created backups/${result.fileName}`);
+  console.log(`☁️  Uploaded ${result.fileName} to Google Drive`);
+  for (const name of result.removedFromDrive) console.log(`🗑️  Removed old Drive backup: ${name}`);
+  for (const name of result.removedLocally) console.log(`🗑️  Removed old local backup: ${name}`);
 
   console.log("\n✅ Backup complete.");
 }
