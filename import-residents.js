@@ -11,7 +11,9 @@
  *
  * What it does, in order:
  *   1. Reads the "Households" and "Residents" sheets.
- *   2. Creates any Sitio that doesn't already exist (matched by name).
+ *   2. Creates any Sitio or Occupation that doesn't already exist (matched
+ *      by name), so newly-imported residents show up correctly in the
+ *      Manage > Occupation List dropdown afterward.
  *   3. Creates each Household (skipping ones whose Sitio + Parent Ref combo
  *      already exists is NOT attempted -- households have no natural key, so
  *      re-running will create duplicate households if you don't remove rows
@@ -63,6 +65,7 @@ if (!filePath) {
 
 // ---- Minimal schemas mirroring src/backend/models/*.ts ----
 const SitioSchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } }, { timestamps: true });
+const OccupationSchema = new mongoose.Schema({ name: { type: String, required: true, unique: true } }, { timestamps: true });
 const HouseholdSchema = new mongoose.Schema(
   {
     household_code: { type: String, required: true, unique: true },
@@ -123,6 +126,7 @@ ResidentSchema.pre("save", async function () {
 });
 
 const Sitio = mongoose.models.Sitio || mongoose.model("Sitio", SitioSchema);
+const Occupation = mongoose.models.Occupation || mongoose.model("Occupation", OccupationSchema);
 const Household = mongoose.models.Household || mongoose.model("Household", HouseholdSchema);
 const Resident = mongoose.models.Resident || mongoose.model("Resident", ResidentSchema);
 
@@ -166,6 +170,21 @@ async function getOrCreateSitio(name, cache) {
   return sitio;
 }
 
+// Resident.occupation is stored as plain text (not a reference), but the
+// Manage > Occupation List dropdown is a separate master list. Make sure
+// every occupation seen during import exists there too, the same way
+// Sitios are auto-created, so newly-imported residents show up correctly
+// in that dropdown when edited later.
+async function getOrCreateOccupation(name, cache) {
+  const clean = str(name);
+  if (!clean) throw new Error("Occupation is required");
+  if (cache.has(clean)) return cache.get(clean);
+  let occupation = await Occupation.findOne({ name: clean });
+  if (!occupation) occupation = await Occupation.create({ name: clean });
+  cache.set(clean, occupation);
+  return occupation;
+}
+
 async function main() {
   const wb = XLSX.readFile(filePath);
   const hhRows = readSheet(wb, "Households");
@@ -175,6 +194,7 @@ async function main() {
   console.log(`Connected. ${hhRows.length} household row(s), ${resRows.length} resident row(s).\n`);
 
   const sitioCache = new Map();
+  const occupationCache = new Map();
   const householdRefMap = new Map(); // "HH-REF-1" -> Household doc
   let hhOk = 0, hhFail = 0;
 
@@ -230,6 +250,9 @@ async function main() {
       const sitioName = str(get(row, "sitio"));
       const sitio = await getOrCreateSitio(sitioName, sitioCache);
 
+      const occupationName = str(get(row, "occupation"));
+      await getOrCreateOccupation(occupationName, occupationCache);
+
       const hhRef = str(get(row, "household ref"));
       let householdId;
       if (hhRef) {
@@ -249,7 +272,7 @@ async function main() {
         employment_status: str(get(row, "employment status")) || "N/A",
         status: str(get(row, "status")) || "Active",
         birthdate,
-        occupation: str(get(row, "occupation")),
+        occupation: occupationName,
         address: str(get(row, "address")),
         place_of_birth: str(get(row, "place of birth")),
         citizenship: str(get(row, "citizenship")),
