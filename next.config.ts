@@ -12,12 +12,14 @@ const withTM = transpileModules([
 	"dayjs",
 	"@ant-design/icons",
 	"@ant-design/icons-svg",
+	"@ant-design/colors",
 ]);
 
 const nextConfig: NextConfig = {
 	transpilePackages: [
 		"@ant-design/pro-components",
 		"@ant-design/icons",
+		"@ant-design/colors",
 		"@rc-component/util",
 	],
 	reactStrictMode: true,
