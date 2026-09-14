@@ -5,10 +5,13 @@ export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const { pathname } = req.nextUrl;
 
-  // Allow login page and NextAuth API routes through
-  if (pathname.startsWith("/login") || pathname.startsWith("/api/auth")) {
+  // Allow login page and NextAuth API routes through. Exact match on
+  // "/login" -- startsWith would also match "/login-audit" and any other
+  // future route beginning with "login", incorrectly bouncing an already
+  // signed-in user on those pages back to "/".
+  if (pathname === "/login" || pathname.startsWith("/api/auth")) {
     // If already logged in, redirect to home
-    if (token && pathname.startsWith("/login")) {
+    if (token && pathname === "/login") {
       return NextResponse.redirect(new URL("/", req.url));
     }
     return NextResponse.next();
