@@ -9,6 +9,11 @@ interface IProps {
 	householdLoading: boolean;
 	handleAddHouseholdModal: (record?: Household) => void;
 	fetchHouseholds: () => void;
+	totalCount?: number;
+	page?: number;
+	pageSize?: number;
+	handleSearch?: (value: string) => void;
+	handlePageChange?: (page: number, pageSize: number) => void;
 }
 
 function HouseholdTable(props: IProps) {
@@ -17,6 +22,11 @@ function HouseholdTable(props: IProps) {
 		householdLoading,
 		handleAddHouseholdModal,
 		fetchHouseholds,
+		totalCount,
+		page,
+		pageSize,
+		handleSearch,
+		handlePageChange,
 	} = props;
 	const { message } = App.useApp();
 
@@ -99,14 +109,27 @@ function HouseholdTable(props: IProps) {
 
 	return (
 		<div>
-			<Input.Search placeholder="Search" style={{ marginBottom: 16 }} />
+			<Input.Search
+				placeholder="Search by household code"
+				style={{ marginBottom: 16, maxWidth: 320 }}
+				onSearch={handleSearch}
+				allowClear
+			/>
 			<Table
 				dataSource={households ?? ([] as Household[])}
 				loading={householdLoading}
 				columns={columns}
 				size="small"
-				rowKey="key"
+				rowKey="id"
 				scroll={{ x: "1000" }}
+				pagination={{
+					current: page,
+					pageSize,
+					total: totalCount,
+					showSizeChanger: true,
+					showTotal: (total) => `Total ${total} households`,
+					onChange: handlePageChange,
+				}}
 			/>
 		</div>
 	);

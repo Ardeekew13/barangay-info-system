@@ -47,7 +47,12 @@ function AddHouseholdModal(props: ModalProps) {
 	// Options for "which household is this one under" -- every other household
 	// (a married child's family can be placed under their parents' household while
 	// still keeping its own single head).
-	const { data: householdsData, loading: householdsLoading } = useQuery<any>(GET_HOUSEHOLDS);
+	// This dropdown needs every household (client-side filtered Select, not a
+	// server-search query) -- GET_HOUSEHOLDS defaults to a small page for the
+	// paginated Household List page, so ask for a high ceiling explicitly.
+	const { data: householdsData, loading: householdsLoading } = useQuery<any>(GET_HOUSEHOLDS, {
+		variables: { pageSize: 2000 },
+	});
 	const parentHouseholdOptions = (householdsData?.households?.households ?? [])
 		.filter((hh: any) => hh.id !== record?.id)
 		.map((hh: any) => ({

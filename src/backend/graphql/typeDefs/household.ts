@@ -11,6 +11,7 @@ export const householdTypeDefs = gql`
 		success: Boolean!
 		message: String!
 		households: [Household!]
+		totalCount: Int
 	}
 
 	type Household {
@@ -25,7 +26,7 @@ export const householdTypeDefs = gql`
 	}
 
 	type Query {
-		households: HouseholdsResponse!
+		households(search: String, page: Int, pageSize: Int): HouseholdsResponse!
 		household(id: ID!): HouseholdResponse!
 		householdsBySitio(sitioId: ID!): HouseholdsResponse!
 	}

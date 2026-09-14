@@ -96,6 +96,14 @@ residentSchema.index(
   { unique: true, partialFilterExpression: { isHead: true, householdId: { $type: "objectId" } } }
 );
 
+// The main Resident List query always filters isDeleted + sorts by createdAt,
+// and often also filters by sitio -- without these, MongoDB has to scan every
+// resident document on every page load once the collection grows past a
+// trivial size.
+residentSchema.index({ isDeleted: 1, createdAt: -1 });
+residentSchema.index({ sitio: 1, isDeleted: 1 });
+residentSchema.index({ householdId: 1 });
+
 residentSchema.pre("save", async function () {
   if (!this.resident_code) {
     // Get the count of existing residents

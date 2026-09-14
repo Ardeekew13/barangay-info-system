@@ -2,10 +2,11 @@ import { gql } from "@apollo/client";
 
 // QUERIES
 export const GET_HOUSEHOLDS = gql`
-  query GetHouseholds {
-    households {
+  query GetHouseholds($search: String, $page: Int, $pageSize: Int) {
+    households(search: $search, page: $page, pageSize: $pageSize) {
       success
       message
+      totalCount
       households {
         id
         household_code

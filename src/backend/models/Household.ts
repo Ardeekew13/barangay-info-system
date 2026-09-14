@@ -47,4 +47,9 @@ householdSchema.pre("save", async function () {
   }
 });
 
+// Households List filters by sitio (householdsBySitio) and the parent-household
+// lookup runs on every household detail view.
+householdSchema.index({ sitio: 1 });
+householdSchema.index({ parentHouseholdId: 1 });
+
 export default models.Household || model("Household", householdSchema);

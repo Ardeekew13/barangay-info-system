@@ -231,7 +231,10 @@ pageSize,
 						{ resident_code: { $regex: search, $options: "i" } },
 					];
 				}
-				const residents = await Resident.find(query).populate("sitio").sort({ createdAt: -1 });
+				// Unbounded dropdown query -- capped so it can't pull the entire
+				// collection as data grows. In practice these feed a search-as-you-type
+				// Select, so a real search narrows well below this anyway.
+				const residents = await Resident.find(query).populate("sitio").sort({ createdAt: -1 }).limit(200);
 				return { success: true, message: "Residents fetched successfully", residents };
 			} catch (error: any) {
 				return { success: false, message: `Failed: ${error.message}`, residents: [] };
@@ -249,7 +252,7 @@ pageSize,
 						{ resident_code: { $regex: search, $options: "i" } },
 					];
 				}
-				const residents = await Resident.find(query).populate("sitio").sort({ createdAt: -1 });
+				const residents = await Resident.find(query).populate("sitio").sort({ createdAt: -1 }).limit(200);
 				return { success: true, message: "Residents fetched successfully", residents };
 			} catch (error: any) {
 				return { success: false, message: `Failed: ${error.message}`, residents: [] };

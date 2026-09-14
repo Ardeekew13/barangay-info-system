@@ -67,11 +67,26 @@ export const householdResolvers = {
 	},
 
 	Query: {
-		households: async () => {
+		households: async (
+			_: any,
+			{ search, page, pageSize }: { search?: string; page?: number; pageSize?: number },
+		) => {
 			try {
-				const households = await Household.find()
+				const query: any = {};
+				if (search) {
+					query.household_code = { $regex: search, $options: "i" };
+				}
+
+				const totalCount = await Household.countDocuments(query);
+				const currentPage = page && page > 0 ? page : 1;
+				const limit = pageSize && pageSize > 0 ? pageSize : 10;
+				const skip = (currentPage - 1) * limit;
+
+				const households = await Household.find(query)
 					.populate("sitio")
-					.sort({ createdAt: -1 });
+					.sort({ createdAt: -1 })
+					.skip(skip)
+					.limit(limit);
 
 				const householdIds = households.map((hh) => hh._id);
 
@@ -102,12 +117,14 @@ export const householdResolvers = {
 					success: true,
 					message: "Households fetched successfully",
 					households: result,
+					totalCount,
 				};
 			} catch (error: any) {
 				return {
 					success: false,
 					message: `Failed to fetch households: ${error.message}`,
 					households: [],
+					totalCount: 0,
 				};
 			}
 		},

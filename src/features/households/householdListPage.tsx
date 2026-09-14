@@ -16,8 +16,12 @@ import AddHouseholdModal from "./components/addHouseholdModal";
 const HouseholdListPage = () => {
 	const addHousehold = useDialog(AddHouseholdModal);
 	const [households, setHouseholds] = useState<Household[]>([]);
+	const [totalCount, setTotalCount] = useState(0);
 	const { message } = App.useApp();
 	const [filters, setFilters] = useState({});
+	const [searchTerm, setSearchTerm] = useState("");
+	const [page, setPage] = useState(1);
+	const [pageSize, setPageSize] = useState(10);
 	const residentFilterDrawer = useDrawer();
 
 	// GraphQL Query
@@ -26,9 +30,15 @@ const HouseholdListPage = () => {
 		loading: householdLoading,
 		refetch,
 	} = useQuery<any>(GET_HOUSEHOLDS, {
+		variables: {
+			search: searchTerm || undefined,
+			page,
+			pageSize,
+		},
 		onCompleted: (data) => {
 			if (data?.households?.success) {
 				setHouseholds(data?.households?.households);
+				setTotalCount(data?.households?.totalCount || 0);
 			}
 		},
 		onError: (error) => {
@@ -38,11 +48,23 @@ const HouseholdListPage = () => {
 
 	//QUERY
 	const refetchHouseholds = useCallback(async () => {
-		const result = await refetch();
-	}, [refetch]);
+		await refetch({ search: searchTerm || undefined, page, pageSize });
+	}, [refetch, searchTerm, page, pageSize]);
+
+	const handleSearch = (value: string) => {
+		setSearchTerm(value);
+		setPage(1);
+	};
+
+	const handlePageChange = (nextPage: number, nextPageSize: number) => {
+		setPage(nextPage);
+		setPageSize(nextPageSize);
+	};
 
 	const onResetFilter = () => {
 		setFilters({});
+		setSearchTerm("");
+		setPage(1);
 		refetchHouseholds();
 	};
 
@@ -67,8 +89,13 @@ const HouseholdListPage = () => {
 			householdLoading,
 			handleAddHouseholdModal,
 			fetchHouseholds: refetchHouseholds,
+			totalCount,
+			page,
+			pageSize,
+			handleSearch,
+			handlePageChange,
 		}),
-		[households, householdLoading, handleAddHouseholdModal, refetchHouseholds],
+		[households, householdLoading, handleAddHouseholdModal, refetchHouseholds, totalCount, page, pageSize],
 	);
 
 	return (
