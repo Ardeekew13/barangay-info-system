@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# backups (Google Drive backup script)
+/backups
+credentials.json
+token.json
+backup.log
+backup-error.log
+
+# local tooling / scratch (not part of the app)
+.claude/
+Claude outputs/
+_to_delete/

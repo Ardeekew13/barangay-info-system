@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.barangay.backup</string>
+
+    <!-- Fill these two in before installing: -->
+    <!-- 1. ProgramArguments[0] = output of `which npx` -->
+    <!-- 2. WorkingDirectory / paths below = full path to this project folder -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>REPLACE_WITH_NPX_PATH</string>
+        <string>tsx</string>
+        <string>scripts/backup-to-drive.ts</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>REPLACE_WITH_PROJECT_PATH</string>
+
+    <key>StandardOutPath</key>
+    <string>REPLACE_WITH_PROJECT_PATH/backup.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>REPLACE_WITH_PROJECT_PATH/backup-error.log</string>
+
+    <!-- Runs every Monday at 2:00 AM. Change Weekday (0=Sunday..6=Saturday),
+         Hour, and Minute to adjust the schedule. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>1</integer>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>
