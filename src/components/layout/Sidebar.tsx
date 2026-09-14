@@ -6,11 +6,12 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import WorkIcon from "@mui/icons-material/Work";
 import HistoryIcon from "@mui/icons-material/History";
 import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
+import LogoutOutlined from "@mui/icons-material/Logout";
 import { Layout, Menu, Typography } from "antd";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useLayoutEffect, useState } from "react";
 import brgyLogo from "../../assets/brgy-logo.png";
 
@@ -89,6 +90,10 @@ const Sidebar: React.FC = () => {
 		(item) => router.pathname === item.href
 	)?.key;
 
+	const handleLogout = () => {
+		signOut({ callbackUrl: "/login" });
+	};
+
 	useLayoutEffect(() => {
 		const handleResize = () => {
 			setScreenWidth(window.innerWidth);
@@ -108,6 +113,7 @@ const Sidebar: React.FC = () => {
 			width={250}
 			collapsed={collapsed}
 			onCollapse={setCollapsed}
+			style={{ display: "flex", flexDirection: "column", height: "100vh" }}
 		>
 			<div
 				style={{
@@ -116,6 +122,7 @@ const Sidebar: React.FC = () => {
 					textAlign: "center",
 					display: "flex",
 					alignItems: "center",
+					flexShrink: 0,
 				}}
 			>
 				<Image
@@ -141,6 +148,22 @@ const Sidebar: React.FC = () => {
 					icon: item.icon,
 					label: <Link href={item.href}>{item.label}</Link>,
 				}))}
+				style={{ flex: 1, overflowY: "auto" }}
+			/>
+			<Menu
+				theme="dark"
+				mode="inline"
+				selectable={false}
+				items={[
+					{
+						key: "logout",
+						icon: <LogoutOutlined sx={{ fontSize: 18, width: 18, height: 18 }} />,
+						label: "Log Out",
+						danger: true,
+						onClick: handleLogout,
+					},
+				]}
+				style={{ flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.1)" }}
 			/>
 		</Sider>
 	);
