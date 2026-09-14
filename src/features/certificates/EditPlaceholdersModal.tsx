@@ -96,7 +96,7 @@ const EditPlaceholdersModal: React.FC<{
       title: "Source",
       dataIndex: "source",
       key: "source",
-      render: (source: string, record: Placeholder) => (
+      render: (source: Placeholder["source"], record: Placeholder) => (
         <Select
           value={source}
           options={SOURCE_OPTIONS}

@@ -14,8 +14,13 @@ import path from "path";
 import fs from "fs";
 import os from "os";
 import archiver from "archiver";
-import type { OAuth2Client } from "google-auth-library";
 import { google } from "googleapis";
+
+// Derive the OAuth2 client type structurally from googleapis own bundled
+// google-auth-library copy, instead of importing that package separately --
+// otherwise npm can hoist a second, nominally-different copy and TypeScript
+// (correctly) refuses to treat the two as the same type.
+export type OAuth2Client = InstanceType<typeof google.auth.OAuth2>;
 
 const DRIVE_FOLDER_NAME = process.env.GOOGLE_DRIVE_FOLDER_NAME || "Barangay Backups";
 const RETENTION_COUNT = Number(process.env.BACKUP_RETENTION_COUNT || 8);

@@ -22,8 +22,7 @@ import path from "path";
 import fs from "fs";
 import readline from "readline";
 import { google } from "googleapis";
-import type { OAuth2Client } from "google-auth-library";
-import { runBackup } from "../src/backend/services/backup/core";
+import { runBackup, type OAuth2Client } from "../src/backend/services/backup/core";
 
 dotenv.config({ path: path.resolve(__dirname, "../.env.local") });
 

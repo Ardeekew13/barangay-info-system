@@ -12,7 +12,7 @@
  */
 
 import { google } from "googleapis";
-import type { OAuth2Client } from "google-auth-library";
+import type { OAuth2Client } from "@/backend/services/backup/core";
 
 export function getEnvAuthClient(): OAuth2Client {
   const clientId = process.env.GOOGLE_CLIENT_ID;
