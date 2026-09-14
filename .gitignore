@@ -51,3 +51,6 @@ backup-error.log
 .claude/
 Claude outputs/
 _to_delete/
+
+# never use yarn in this project -- npm/package-lock.json only
+yarn.lock
