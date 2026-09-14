@@ -5,6 +5,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import DescriptionIcon from "@mui/icons-material/Description";
 import WorkIcon from "@mui/icons-material/Work";
 import HistoryIcon from "@mui/icons-material/History";
+import ManageAccountsIcon from "@mui/icons-material/ManageAccounts";
 import { Layout, Menu, Typography } from "antd";
 import Image from "next/image";
 import Link from "next/link";
@@ -68,6 +69,12 @@ const Sidebar: React.FC = () => {
 		},
 		...(role === "admin"
 			? [
+					{
+						key: "manage-accounts",
+						label: "Manage Accounts",
+						icon: <ManageAccountsIcon sx={{ fontSize: 18, width: 18, height: 18 }} />,
+						href: "/manage-accounts",
+					},
 					{
 						key: "login-audit",
 						label: "Login Activity",

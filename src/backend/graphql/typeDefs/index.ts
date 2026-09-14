@@ -7,6 +7,7 @@ import { barangayOfficialTypeDefs } from "./barangayOfficial";
 import { certificateTemplateTypeDefs } from "./certificateTemplate";
 import { occupationTypeDefs } from "./occupation";
 import { loginAuditTypeDefs } from "./loginAudit";
+import { userTypeDefs } from "./user";
 
 // Merge all type definitions
 export const typeDefs = [
@@ -17,4 +18,5 @@ export const typeDefs = [
 	certificateTemplateTypeDefs,
 	occupationTypeDefs,
 	loginAuditTypeDefs,
+	userTypeDefs,
 ];

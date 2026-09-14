@@ -7,6 +7,7 @@ import { barangayOfficialResolvers } from "./barangayOfficial";
 import { certificateTemplateResolvers } from "./certificateTemplate";
 import { occupationResolvers } from "./occupation";
 import { loginAuditResolvers } from "./loginAudit";
+import { userResolvers } from "./user";
 
 // Merge all resolvers
 export const resolvers = {
@@ -18,6 +19,7 @@ export const resolvers = {
     ...certificateTemplateResolvers.Query,
     ...occupationResolvers.Query,
     ...loginAuditResolvers.Query,
+    ...userResolvers.Query,
   },
   Mutation: {
     ...sitioResolvers.Mutation,
@@ -26,6 +28,7 @@ export const resolvers = {
     ...barangayOfficialResolvers.Mutation,
     ...certificateTemplateResolvers.Mutation,
     ...occupationResolvers.Mutation,
+    ...userResolvers.Mutation,
   },
   // Field resolvers
   Resident: residentResolvers.Resident,
